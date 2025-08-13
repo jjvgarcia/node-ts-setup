@@ -1,10 +1,17 @@
-import express from "express";
+import App from './app';
 
-const app = express();
-
-app.get("/", (req, res, next) => {
-  res.send({ msg: "Server Running!!" });
+// Handle uncaught exceptions
+process.on('uncaughtException', (error: Error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
 });
-const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start the application
+const app = new App();
+app.listen();
