@@ -1,53 +1,31 @@
 import { Response } from 'express';
 import { BaseController } from './BaseController';
-import { CustomRequest, User, CreateUserDto, UpdateUserDto } from '../types';
+import { CustomRequest } from '../types';
 import { AppError } from '../middlewares';
-
-// Mock data for demonstration (replace with actual database operations)
-let users: User[] = [
-  {
-    id: '1',
-    email: 'john@example.com',
-    name: 'John Doe',
-    role: 'user',
-    createdAt: new Date('2023-01-01'),
-    updatedAt: new Date('2023-01-01'),
-  },
-  {
-    id: '2',
-    email: 'admin@example.com',
-    name: 'Admin User',
-    role: 'admin',
-    createdAt: new Date('2023-01-01'),
-    updatedAt: new Date('2023-01-01'),
-  },
-];
+import { CreateUserInput, UpdateUserInput, UserParams } from '../presentation/validators/user.schemas';
+import { PrismaUserRepository } from '../infrastructure/database/UserRepository';
 
 export class UserController extends BaseController {
+  private userRepository: PrismaUserRepository;
+
+  constructor() {
+    super();
+    this.userRepository = new PrismaUserRepository();
+  }
   /**
    * Get all users with pagination
    */
   public getUsers = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-      const { page, limit, offset } = this.getPaginationParams(req);
-      
-      // Simulate database query with pagination
-      const total = users.length;
-      const paginatedUsers = users.slice(offset, offset + limit);
-      
-      const response = {
-        data: paginatedUsers,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: offset + limit < total,
-          hasPrev: page > 1,
-        },
-      };
+      const { page, limit, sortBy, sortOrder } = this.getPaginationParams(req);
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
 
-      this.sendSuccess(res, response, 'Users retrieved successfully');
+      const result = await this.userRepository.findAll(
+        { page, limit, sortBy, sortOrder },
+        search
+      );
+
+      this.sendSuccess(res, result, 'Users retrieved successfully');
     } catch (error) {
       throw new AppError('Failed to retrieve users', 500);
     }
@@ -58,10 +36,10 @@ export class UserController extends BaseController {
    */
   public getUserById = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-      const { id } = req.params;
-      
-      const user = users.find(u => u.id === id);
-      
+      const { id } = req.params as UserParams;
+
+      const user = await this.userRepository.findById(id);
+
       if (!user) {
         return this.sendNotFound(res, 'User not found');
       }
@@ -77,35 +55,22 @@ export class UserController extends BaseController {
    */
   public createUser = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-      const userData: CreateUserDto = req.body;
-      
-      // Basic validation
-      if (!userData.email || !userData.name || !userData.password) {
-        return this.sendBadRequest(res, 'Email, name, and password are required');
-      }
+      const userData = req.body as CreateUserInput;
 
       // Check if user already exists
-      const existingUser = users.find(u => u.email === userData.email);
+      const existingUser = await this.userRepository.findByEmail(userData.email);
       if (existingUser) {
         return this.sendError(res, 'User with this email already exists', 409);
       }
 
       // Create new user
-      const newUser: User = {
-        id: (users.length + 1).toString(),
+      const newUser = await this.userRepository.create({
         email: userData.email,
         name: userData.name,
-        role: userData.role || 'user',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        password: userData.password, // In real app, this would be hashed
+      });
 
-      users.push(newUser);
-
-      // Remove password from response
-      const { ...userResponse } = newUser;
-      
-      this.sendCreated(res, userResponse, 'User created successfully');
+      this.sendCreated(res, newUser, 'User created successfully');
     } catch (error) {
       throw new AppError('Failed to create user', 500);
     }
@@ -116,23 +81,31 @@ export class UserController extends BaseController {
    */
   public updateUser = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-      const { id } = req.params;
-      const updateData: UpdateUserDto = req.body;
-      
-      const userIndex = users.findIndex(u => u.id === id);
-      
-      if (userIndex === -1) {
+      const { id } = req.params as UserParams;
+      const updateData = req.body as UpdateUserInput;
+
+      // Check if user exists
+      const existingUser = await this.userRepository.findById(id);
+      if (!existingUser) {
         return this.sendNotFound(res, 'User not found');
       }
 
-      // Update user
-      users[userIndex] = {
-        ...users[userIndex],
-        ...updateData,
-        updatedAt: new Date(),
-      };
+      // Check if email is being updated and already exists
+      if (updateData.email && updateData.email !== existingUser.email) {
+        const emailExists = await this.userRepository.exists(updateData.email);
+        if (emailExists) {
+          return this.sendError(res, 'User with this email already exists', 409);
+        }
+      }
 
-      this.sendSuccess(res, users[userIndex], 'User updated successfully');
+      // Update user
+      const updatedUser = await this.userRepository.update(id, updateData);
+
+      if (!updatedUser) {
+        return this.sendNotFound(res, 'User not found');
+      }
+
+      this.sendSuccess(res, updatedUser, 'User updated successfully');
     } catch (error) {
       throw new AppError('Failed to update user', 500);
     }
@@ -143,16 +116,14 @@ export class UserController extends BaseController {
    */
   public deleteUser = async (req: CustomRequest, res: Response): Promise<void> => {
     try {
-      const { id } = req.params;
-      
-      const userIndex = users.findIndex(u => u.id === id);
-      
-      if (userIndex === -1) {
+      const { id } = req.params as UserParams;
+
+      const deleted = await this.userRepository.delete(id);
+
+      if (!deleted) {
         return this.sendNotFound(res, 'User not found');
       }
 
-      users.splice(userIndex, 1);
-      
       this.sendNoContent(res);
     } catch (error) {
       throw new AppError('Failed to delete user', 500);

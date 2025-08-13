@@ -12,3 +12,18 @@ export {
   compressionMiddleware,
   securityHeaders,
 } from './security';
+
+// Validation
+export { validate, sanitizeBody, sanitizeInput } from './validation';
+
+// Advanced Security
+export {
+  slowDownMiddleware,
+  inputSizeLimiter,
+  methodValidator,
+  ipWhitelist,
+  contentTypeValidator,
+  requestTimeout,
+  sqlInjectionProtection,
+  noSQLInjectionProtection,
+} from './advancedSecurity';

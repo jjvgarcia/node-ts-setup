@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { CustomRequest, ApiResponse, HttpStatus } from '../types';
+import { CustomRequest, ApiResponse, HttpStatus, PaginationParams } from '../types';
 
 export abstract class BaseController {
   /**
@@ -104,11 +104,11 @@ export abstract class BaseController {
   /**
    * Extract pagination parameters from request
    */
-  protected getPaginationParams(req: CustomRequest) {
+  protected getPaginationParams(req: CustomRequest): PaginationParams & { offset: number } {
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 100); // Max 100 items per page
     const sortBy = req.query.sortBy as string;
-    const sortOrder = (req.query.sortOrder as string) === 'desc' ? 'desc' : 'asc';
+    const sortOrder: 'asc' | 'desc' = (req.query.sortOrder as string) === 'desc' ? 'desc' : 'asc';
 
     return {
       page: Math.max(1, page),

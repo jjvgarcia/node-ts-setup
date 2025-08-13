@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { validateRequiredFields, isValidEmail } from '../src/utils/validation';
 
 describe('Utility Functions', () => {

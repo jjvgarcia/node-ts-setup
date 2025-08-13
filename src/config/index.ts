@@ -1,7 +1,4 @@
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
+import { env, validateEnv } from './env';
 
 interface Config {
   port: number;
@@ -24,38 +21,26 @@ interface Config {
 }
 
 const config: Config = {
-  port: parseInt(process.env.PORT || '5000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  port: env.PORT,
+  nodeEnv: env.NODE_ENV,
   api: {
-    version: process.env.API_VERSION || 'v1',
-    prefix: process.env.API_PREFIX || '/api',
+    version: env.API_VERSION,
+    prefix: env.API_PREFIX,
   },
   security: {
-    jwtSecret: process.env.JWT_SECRET || 'fallback-secret-key',
-    corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    jwtSecret: env.JWT_SECRET,
+    corsOrigin: env.CORS_ORIGIN,
   },
   rateLimit: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    maxRequests: env.RATE_LIMIT_MAX_REQUESTS,
   },
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: env.LOG_LEVEL,
   },
 };
 
-// Validation function
-export const validateConfig = (): void => {
-  const requiredEnvVars = ['NODE_ENV'];
-  
-  for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-      throw new Error(`Missing required environment variable: ${envVar}`);
-    }
-  }
-
-  if (config.nodeEnv === 'production' && config.security.jwtSecret === 'fallback-secret-key') {
-    throw new Error('JWT_SECRET must be set in production environment');
-  }
-};
+// Export validation function
+export const validateConfig = validateEnv;
 
 export default config;

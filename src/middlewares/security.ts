@@ -10,13 +10,13 @@ export const corsMiddleware = cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = config.security.corsOrigin.split(',');
-    
+
     if (allowedOrigins.includes(origin) || config.nodeEnv === 'development') {
       return callback(null, true);
     }
-    
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -44,7 +44,7 @@ export const helmetMiddleware = helmet({
 // Rate limiting configuration
 export const rateLimitMiddleware = rateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.maxRequests,
+  limit: config.rateLimit.maxRequests,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
@@ -72,15 +72,15 @@ export const compressionMiddleware = compression({
 });
 
 // Security headers middleware
-export const securityHeaders = (req: Request, res: Response, next: NextFunction): void => {
+export const securityHeaders = (_req: Request, res: Response, next: NextFunction): void => {
   // Remove X-Powered-By header
   res.removeHeader('X-Powered-By');
-  
+
   // Add custom security headers
   res.setHeader('X-API-Version', config.api.version);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
+
   next();
 };

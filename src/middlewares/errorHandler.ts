@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ErrorResponse, HttpStatus } from '../types';
 import config from '../config';
+import logger from '../config/logger';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -19,7 +20,7 @@ export const errorHandler = (
   error: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
   let message = 'Internal Server Error';
@@ -47,15 +48,19 @@ export const errorHandler = (
     message = 'Token expired';
   }
 
-  // Log error
-  console.error(`Error ${statusCode}: ${message}`, {
-    error: error.message,
-    stack: error.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-  });
+  // Log error with structured logging
+  logger.error({
+    err: error,
+    req: {
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      requestId: (req as any).requestId,
+    },
+    statusCode,
+  }, `Error ${statusCode}: ${message}`);
 
   const errorResponse: ErrorResponse = {
     success: false,
