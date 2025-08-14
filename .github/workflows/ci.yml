@@ -33,6 +33,8 @@ jobs:
     # Expose DATABASE_URL to all steps in this job
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/node_ts_api?schema=public
+      # Zod requires JWT_SECRET to be present and at least 24 chars
+      JWT_SECRET: testsecret_jwt_32_chars_min_123456
     
     strategy:
       matrix:
