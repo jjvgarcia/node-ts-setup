@@ -13,6 +13,27 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    # Start PostgreSQL for Prisma tests
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: node_ts_api
+        # Wait until Postgres is healthy before running steps
+        options: >-
+          --health-cmd "pg_isready -U postgres -d node_ts_api"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    # Expose DATABASE_URL to all steps in this job
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/node_ts_api?schema=public
+    
     strategy:
       matrix:
         node-version: [18.x, 20.x]
